@@ -53,7 +53,7 @@ describe("hmarkdown", function() {
     afterEach(function() { hs = null; });
 
     it("is a lightweight object proxy with an internal cask for key/value storage", function() {
-      expect( hs.cask ).toEqual([]);
+      expect( hs.cask ).toEqual({});
     });
     describe(".set", function() {
       it("stores the value under the given key", function() {
@@ -86,14 +86,13 @@ describe("hmarkdown", function() {
     it("exports a top-level object named Markdown", function() {
       expect(Markdown).toBeDefined();
     });
-    it("includes a reference to the HMarkdown engine as .engine", function() {
-      expect(Markdown.engine).toBeDefined();
-      expect(typeof Markdown.engine).toBe('function')
+    it("is a constructor function", function() {
+      expect(typeof Markdown).toBe('function')
     });
   });
 
   describe(".render()", function() {
-    it("renders some input", function() {
+    it("statically renders some input with default options", function() {
       expect( Markdown.render("foo") ).toEqual("foo");
     });
   });
@@ -107,10 +106,10 @@ describe("hmarkdown", function() {
     });
   });
 
-  describe("HMarkown engine", function() {
+  describe("Markdown renderer instance", function() {
     var engine;
     beforeEach(function() {
-      engine = new Markdown.engine('quux');
+      engine = new Markdown();
     });
 
     it("includes hooks", function() {
