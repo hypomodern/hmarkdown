@@ -9,8 +9,9 @@ describe("hmarkdown", function() {
     });
     afterEach(function() { hooks = null; });
 
-    it("is a lightweight array proxy that has two predefined hook collections: before and after", function() {
+    it("is a lightweight array proxy that has 3 predefined hook collections: before, entering, and after", function() {
       expect( hooks.before ).toEqual([]);
+      expect( hooks.entering ).toEqual([]);
       expect( hooks.after ).toEqual([]);
     });
     describe(".add", function() {
@@ -82,6 +83,27 @@ describe("hmarkdown", function() {
     });
   });
 
+  describe("ListStore", function() {
+    var ls;
+    beforeEach(function() {
+      ls = new Markdown.ListStore();
+    });
+    afterEach(function() { ls = null; });
+
+    describe(".set()", function() {
+      it("stores the value and returns a key", function() {
+        var key = ls.set('foo');
+        expect(key).toBe(0);
+      });
+    });
+    describe(".get()", function() {
+      it("returns the value stored with the given key", function() {
+        var item = ls.get( ls.set('foo') );
+        expect(item).toEqual('foo');
+      });
+    });
+  });
+
   describe("Markdown", function() {
     it("exports a top-level object named Markdown", function() {
       expect(Markdown).toBeDefined();
@@ -93,7 +115,7 @@ describe("hmarkdown", function() {
 
   describe(".render()", function() {
     it("statically renders some input with default options", function() {
-      expect( Markdown.render("foo") ).toEqual("foo");
+      expect( Markdown.render("foo") ).toEqual("foo\n\n");
     });
   });
 
@@ -106,7 +128,7 @@ describe("hmarkdown", function() {
     });
   });
 
-  describe("Markdown renderer instance", function() {
+  describe("Markdown instance", function() {
     var engine;
     beforeEach(function() {
       engine = new Markdown();
@@ -115,6 +137,77 @@ describe("hmarkdown", function() {
     it("includes hooks", function() {
       expect( engine.hooks ).toBeDefined();
     });
+
+    describe(".clean()", function() {
+      it("follows attacklab in escaping tildes (because we're going to use ~ as an escape char)", function() {
+        expect( engine.clean( "->~<- ->~<-" ) ).toEqual('->~T<- ->~T<-');
+      });
+      it("follows attacklab in escaping the almighty $, because that has a special meaning in RegExp", function() {
+        expect( engine.clean("Cash $; Mo $ Mo Problems") ).toEqual('Cash ~D; Mo ~D Mo Problems');
+      });
+      it("standardizes windows line endings to unix-style", function() {
+        expect( engine.clean("Line One\r\nLine Two") ).toEqual('Line One\nLine Two');
+      });
+      it("standardizes old mac line endings to unix-style", function() {
+        expect( engine.clean("Line One\rLine Two") ).toEqual('Line One\nLine Two');
+      });
+      it("converts tabs to spaces", function() {
+        expect( engine.clean("here be tabs:\t\t(but no more)") ).toEqual('here be tabs:    (but no more)');
+      });
+      it("strips whitespace-only lines from the input", function() {
+        expect( engine.clean("Foo\n\t\t\nBar\n   ") ).toEqual('Foo\n\nBar\n')
+      });
+    });
+
+    describe(".detab()", function() {
+      it("converts tabs to spaces", function() {
+        expect( engine.detab("\t\t") ).toEqual('    ');
+      });
+    });
+
+    describe(".restore()", function() {
+      it("restores the dolla-dollas y'all", function() {
+        expect( engine.restore( '~D Money ~D Money') ).toEqual('$ Money $ Money');
+      });
+      it("restores tildes to their rightful places", function() {
+        expect( engine.restore( 'Senior ~T, ~T man!') ).toEqual('Senior ~, ~ man!');
+      });
+      it("restores ")
+    });
+
+    describe(".escapeHtml()", function() {
+      it("replaces html with unique markers", function() {
+        var markerized = engine.escapeHtml('<div>Hello there!</div>\n');
+
+        expect(markerized).toEqual('\n\n~K0K\n\n');
+      });
+      it("delegates this work to .saveHtmlAndReturnMarker", function() {
+        spyOn( engine, 'saveHtmlAndReturnMarker' ).andCallThrough();
+        engine.escapeHtml('<div>Hello there!</div>\n');
+
+        expect( engine.saveHtmlAndReturnMarker ).toHaveBeenCalled();
+      });
+    });
+
+    describe(".saveHtmlAndReturnMarker()", function() {
+      it("stashes the given item in the appropriate list store and returns a marker", function() {
+        var marker = engine.saveHtmlAndReturnMarker(null, 'my html');
+
+        expect( engine.html_block_store.list ).toEqual(['my html']);
+        expect(marker).toEqual('\n\n~K0K\n\n')
+      });
+
+    });
+
+    describe(".unescapeHtml()", function() {
+      it("replaces unique markers with the corresponding saved html", function() {
+        engine.html_block_store.set('MY AWESOME HTML');
+        var unescaped = engine.unescapeHtml('\n\n~K0K\n\n');
+
+        expect(unescaped).toEqual('\n\nMY AWESOME HTML\n\n');
+      });
+    });
+
   });
 
 });
